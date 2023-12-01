@@ -3,10 +3,13 @@
 #include <curl/curl.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
-
+#include <vector>
 using namespace std;
 
 using json = nlohmann::json;
+
+string user;
+vector<string> fav_list;
 
 int WriteCallback(void *contents, int size, int nmemb, string *output)
 {
@@ -15,7 +18,7 @@ int WriteCallback(void *contents, int size, int nmemb, string *output)
     return total_size;
 }
 
-string addPlus(const string input)
+string addPlus(string input)
 {
     string result;
     for (size_t i = 0; i < input.length(); ++i)
@@ -32,11 +35,10 @@ string addPlus(const string input)
     return result;
 }
 
-string getYouTubeVideoId(const string song, const string artist, const string apiKey)
+string getYouTubeVideoId(string song, string artist, string apiKey)
 {
     string query = addPlus(song) + '+' + addPlus(artist);
     string api_url = "https://www.googleapis.com/youtube/v3/search?key=" + apiKey + "&q=" + query + "&type=video&videoCategoryId=10";
-    cout << query << endl;
     CURL *curl = curl_easy_init();
     if (curl)
     {
@@ -52,17 +54,17 @@ string getYouTubeVideoId(const string song, const string artist, const string ap
         {
             json root = json::parse(response);
 
-            const json items = root["items"];
+            json items = root["items"];
 
             if (!items.empty())
             {
-                const string videoId = items[0]["id"]["videoId"];
+                string videoId = items[0]["id"]["videoId"];
                 return videoId;
             }
         }
-        catch (const json::parse_error e)
+        catch (json::parse_error e)
         {
-            cerr << "JSON parse error: " << e.what() << endl;
+            cout << "JSON parse error: " << endl;
         }
 
         curl_easy_cleanup(curl);
@@ -70,7 +72,7 @@ string getYouTubeVideoId(const string song, const string artist, const string ap
     return "";
 }
 
-string getSpotifyAccessToken(const string clientID, const string clientSecret)
+string getSpotifyAccessToken(string clientID, string clientSecret)
 {
     string token_url = "https://accounts.spotify.com/api/token";
     string postFields = "grant_type=client_credentials";
@@ -100,19 +102,19 @@ string getSpotifyAccessToken(const string clientID, const string clientSecret)
         try
         {
             json root = json::parse(response);
-            const string accessToken = root["access_token"];
+            string accessToken = root["access_token"];
             return accessToken;
         }
-        catch (const json::parse_error e)
+        catch (json::parse_error e)
         {
-            cerr << "JSON parse error: " << endl;
+            cout << "JSON parse error: " << endl;
         }
     }
 
     return ""; // Return empty string on failure
 }
 
-const string credentialsFile = "credentials.json";
+string credentialsFile = "credentials.json";
 json credentials;
 
 void loadCredentials()
@@ -143,8 +145,9 @@ void createAccount()
     cout << "Enter password: ";
     cin >> password;
 
-    credentials[username] = password;
-
+    credentials[username]["pass"] = password;
+    vector<string> fav;
+    credentials[username]["fav"] = fav;
     saveCredentials();
 
     cout << "Account created successfully!" << endl;
@@ -158,9 +161,11 @@ bool login()
     cout << "Enter password: ";
     cin >> password;
 
-    if (credentials.contains(username) && credentials[username] == password)
+    if (credentials.contains(username) && credentials[username]["pass"] == password)
     {
         cout << "Login successful!" << endl;
+        fav_list = credentials[username]["fav"];
+        user = username;
         return true;
     }
     else
@@ -178,40 +183,53 @@ bool askForVideoPreference()
     return (choice == 'y' || choice == 'Y');
 }
 
-int main()
+void playSong(string videoId, bool playVideo)
 {
-    loadCredentials();
-
-    bool loggedIn = false;
-    while (!loggedIn)
+    string playCommand;
+    if (playVideo)
     {
-        cout << "1. Create Account\n2. Login\nEnter option: ";
-        int choice;
-        cin >> choice;
+        playCommand = "mpv https://www.youtube.com/watch?v=" + videoId;
+    }
+    else
+    {
+        playCommand = "mpv --no-video https://www.youtube.com/watch?v=" + videoId;
+    }
+    system(playCommand.c_str());
+}
 
-        switch (choice)
+void add_to_fav(string videoId)
+{
+    for (int i = 0; i < fav_list.size(); i++)
+    {
+        if (fav_list[i] == videoId)
         {
-        case 1:
-            createAccount();
-            break;
-        case 2:
-            loggedIn = login();
-            break;
-        default:
-            cout << "Invalid choice. Try again." << endl;
+            cout << "Song already in the playlist" << endl;
+            return;
         }
     }
+    fav_list.push_back(videoId);
+    credentials[user]["fav"] = fav_list;
+    saveCredentials();
+    cout << "Song added successfully" << endl;
+}
 
-    if (!loggedIn)
+void playFavorites()
+{
+    if (fav_list.size() == 0)
     {
-        cout << "Login failed. Exiting..." << endl;
-        return 1;
+        cout << "No songs in the playlist\n";
+        return;
     }
+    bool playVideo = askForVideoPreference();
+    for (int i = 0; i < fav_list.size(); i++)
+    {
+        playSong(fav_list[i], playVideo);
+    }
+    cout << "End of Playlist" << endl;
+}
 
-    const string clientID = "13d3ebbdb54b4f2d9c7223f4655048dc";
-    const string clientSecret = "1fc57941ab3441d2b0f09472b6925d50";
-    string access_token = getSpotifyAccessToken(clientID, clientSecret);
-    const string apiKey = "AIzaSyAZLtq61NE2gHMtBDsDR29Ojid4wuRWFEs";
+void search(string access_token, string apiKey)
+{
 
     string songName;
     cout << "Enter the song name: ";
@@ -238,7 +256,7 @@ int main()
         {
             json root = json::parse(response);
 
-            const json tracks = root["tracks"]["items"];
+            json tracks = root["tracks"]["items"];
             if (tracks.empty())
             {
                 cout << "No tracks found!" << endl;
@@ -248,9 +266,9 @@ int main()
                 cout << "Top 5 tracks:" << endl;
                 for (int i = 0; i < tracks.size(); i++)
                 {
-                    const json track = tracks[i];
-                    const string track_name = track["name"];
-                    const string artist_name = track["artists"][0]["name"];
+                    json track = tracks[i];
+                    string track_name = track["name"];
+                    string artist_name = track["artists"][0]["name"];
                     cout << i + 1 << ". Track: " << track_name << "\n   Artist: " << artist_name << "\n\n";
                 }
 
@@ -260,9 +278,9 @@ int main()
 
                 if (choice >= 1 && choice <= 5)
                 {
-                    const json chosen_track = tracks[choice - 1];
-                    const string chosen_track_name = chosen_track["name"];
-                    const string chosen_artist_name = chosen_track["artists"][0]["name"];
+                    json chosen_track = tracks[choice - 1];
+                    string chosen_track_name = chosen_track["name"];
+                    string chosen_artist_name = chosen_track["artists"][0]["name"];
 
                     cout << "Playing track: " << chosen_track_name << " by " << chosen_artist_name << "\n";
 
@@ -271,17 +289,15 @@ int main()
                     {
                         bool playVideo = askForVideoPreference();
 
-                        string playCommand;
-                        if (playVideo)
+                        playSong(videoId, playVideo);
+                        // Add to favorites
+                        cout << "Add to Favorites (y/n)" << endl;
+                        char choice;
+                        cin >> choice;
+                        if (choice == 'y')
                         {
-                            playCommand = "mpv https://www.youtube.com/watch?v=" + videoId;
+                            add_to_fav(videoId);
                         }
-                        else
-                        {
-                            playCommand = "mpv --no-video https://www.youtube.com/watch?v=" + videoId;
-                        }
-
-                        system(playCommand.c_str());
                     }
                     else
                     {
@@ -294,12 +310,72 @@ int main()
                 }
             }
         }
-        catch (const json::parse_error e)
+        catch (json::parse_error e)
         {
-            cerr << "JSON parse error: " << endl;
+            cout << "JSON parse error: " << endl;
         }
 
         curl_easy_cleanup(curl);
+    }
+}
+
+int main()
+{
+    loadCredentials();
+
+    bool loggedIn = false;
+    while (!loggedIn)
+    {
+        cout << "1. Create Account\n2. Login\nEnter option: " << endl;
+        int choice;
+        while (!(cin >> choice))
+        {
+            cout << "Invalid choice. Try again." << endl;
+            cin.clear();             // clear the error flag on cin so that future I/O operations will work correctly after invalid input has been entered and ignored using cin.ignore() below (cin will not allow further I/O operations if its error flag is set)
+            cin.ignore(10000, '\n'); // ignore bad input up to 10000 characters or the newline character '\n', whichever comes first
+        }
+
+        if (choice == 1)
+        {
+            createAccount();
+        }
+        else if (choice == 2)
+        {
+            loggedIn = login();
+        }
+        else
+        {
+            cout << "Invalid choice. Try again." << endl;
+        }
+    }
+
+    string clientID = "13d3ebbdb54b4f2d9c7223f4655048dc";
+    string clientSecret = "1fc57941ab3441d2b0f09472b6925d50";
+    string access_token = getSpotifyAccessToken(clientID, clientSecret);
+    string apiKey = "AIzaSyAZLtq61NE2gHMtBDsDR29Ojid4wuRWFEs";
+
+    string choices = "1. Search \n2. Play Favorites\n3. Logout\n";
+    int ch = 0;
+    while (ch != 3)
+    {
+        cout << choices;
+        cin >> ch;
+        if (ch == 1)
+        {
+            search(access_token, apiKey);
+        }
+        else if (ch == 2)
+        {
+            playFavorites();
+        }
+        else if (ch == 3)
+        {
+            cout << "Logging out\n";
+        }
+        else
+        {
+            cout << "Invalid choice. Try again\n";
+        }
     }
 
     return 0;
