@@ -7,13 +7,73 @@ using namespace std;
 
 using json = nlohmann::json;
 
+
+
+class Song {
+private:
+    string name;
+    string artist;
+    string videoId;
+
+public:
+    Song() {}
+    Song(string name, string artist, string videoId) : name(name), artist(artist), videoId(videoId) {}
+
+    string getName() { return name; }
+    string getArtist() { return artist; }
+    string getVideoId() { return videoId; }
+
+    void setName(string name) { this->name = name; }
+    void setArtist(string artist) { this->artist = artist; }
+    void setVideoId(string videoId) { this->videoId = videoId; }
+
+    void playSong(bool playVideo) {
+        string playCommand;
+        if (playVideo) {
+            playCommand = "mpv https://www.youtube.com/watch?v=" + videoId;
+        } else {
+            playCommand = "mpv --no-video https://www.youtube.com/watch?v=" + videoId;
+        }
+
+        cout << endl << endl;
+        system(playCommand.c_str());
+        cout << endl << endl;
+    }
+};
+
+class Playlist {
+private:
+    vector<Song> songs;
+
+public:
+    vector<Song> getSongs() { return songs; }
+
+    void setSongs(vector<Song> songs) { this->songs = songs; }
+
+    void addToPlaylist(Song song) {
+        songs.push_back(song);
+    }
+
+    void playPlaylist(bool playVideo) {
+        for (Song song : songs) {
+            song.playSong(playVideo);
+        }
+    }
+};
+
+
+
+
 string user;
 vector<string> fav_list;
+Playlist fav;
+
+
 
 string addPlus(string input)
 {
     string result;
-    for (size_t i = 0; i < input.length(); ++i)
+    for (int i = 0; i < input.length(); ++i)
     {
         if (input[i] == ' ')
         {
@@ -101,7 +161,7 @@ string getSpotifyAccessToken(string clientID, string clientSecret)
 
     return "";
 }
-string credentialsFile = "credentials.json";
+string credentialsFile = "credentials3.json";
 json credentials;
 
 void loadCredentials()
@@ -133,8 +193,8 @@ void createAccount()
     cin >> password;
 
     credentials[username]["pass"] = password;
-    vector<string> fav;
-    credentials[username]["fav"] = fav;
+    vector<string> fav_new;
+    credentials[username]["fav"] = fav_new;
     saveCredentials();
 
     cout << "Account created successfully!" << endl;
@@ -152,6 +212,13 @@ bool login()
     {
         cout << "Login successful!" << endl;
         fav_list = credentials[username]["fav"];
+        vector<Song> song_list;
+        for (int i=0;i<fav_list.size();i++){
+              Song temp;
+              temp.setVideoId(fav_list[i]);
+              song_list.push_back(temp);
+        }
+        fav.setSongs(song_list);
         user = username;
         return true;
     }
@@ -170,57 +237,10 @@ bool askForVideoPreference()
     return (choice == 'y' || choice == 'Y');
 }
 
-void playSong(string videoId, bool playVideo)
-{
-    string playCommand;
-    if (playVideo)
-    {
-        playCommand = "mpv https://www.youtube.com/watch?v=" + videoId;
-    }
-    else
-    {
-        playCommand = "mpv --no-video https://www.youtube.com/watch?v=" + videoId;
-    }
 
-    cout << endl
-         << endl;
-    system(playCommand.c_str());
-    cout << endl
-         << endl;
-}
 
-void add_to_fav(string videoId)
-{
-    for (int i = 0; i < fav_list.size(); i++)
-    {
-        if (fav_list[i] == videoId)
-        {
-            cout << "Song already in the playlist" << endl;
-            return;
-        }
-    }
-    fav_list.push_back(videoId);
-    credentials[user]["fav"] = fav_list;
-    saveCredentials();
-    cout << "Song added successfully" << endl;
-}
 
-void playFavorites()
-{
-    if (fav_list.size() == 0)
-    {
-        cout << "No songs in the playlist\n";
-    }
-    else
-    {
-        bool playVideo = askForVideoPreference();
-        for (int i = 0; i < fav_list.size(); i++)
-        {
-            playSong(fav_list[i], playVideo);
-        }
-        cout << "End of Playlist" << endl;
-    }
-}
+
 
 void search(string access_token, string apiKey)
 {
@@ -270,21 +290,25 @@ void search(string access_token, string apiKey)
                     json chosen_track = tracks[choice - 1];
                     string chosen_track_name = chosen_track["name"];
                     string chosen_artist_name = chosen_track["artists"][0]["name"];
-
                     cout << "Playing track: " << chosen_track_name << " by " << chosen_artist_name << "\n";
 
                     string videoId = getYouTubeVideoId(chosen_track_name, chosen_artist_name, apiKey);
                     if (!videoId.empty())
                     {
+                       Song s1(chosen_track_name,chosen_artist_name,videoId);
                         bool playVideo = askForVideoPreference();
-                        playSong(videoId, playVideo);
+                        s1.playSong(playVideo);
+                        
 
                         cout << "Add to Favorites (y/n)" << endl;
                         char choice;
                         cin >> choice;
                         if (choice == 'y')
                         {
-                            add_to_fav(videoId);
+                            fav.addToPlaylist(s1);
+                            fav_list.push_back(videoId);
+                            credentials[user]["fav"] = fav_list;
+                            saveCredentials();
                         }
 
                         else
@@ -349,17 +373,24 @@ int main()
 
     string choices = "1. Search \n2. Play Favorites\n3. Logout\n";
     int ch = 0;
+    
     while (ch != 3)
     {
         cout << choices;
-        cin >> ch;
+          while (!(cin >> ch))
+        {
+            cout << "Invalid choice. Try again." << endl;
+            cin.clear();             // clear the error flag on cin so that future I/O operations will work correctly after invalid input has been entered and ignored using cin.ignore() below (cin will not allow further I/O operations if its error flag is set)
+            cin.ignore(10000, '\n'); // ignore bad input up to 10000 characters or the newline character '\n', whichever comes first
+        }
         if (ch == 1)
         {
             search(access_token, apiKey);
         }
         else if (ch == 2)
-        {
-            playFavorites();
+        {  
+            bool playvideo = askForVideoPreference();
+            fav.playPlaylist(playvideo);
         }
         else if (ch == 3)
         {
