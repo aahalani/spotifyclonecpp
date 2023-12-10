@@ -58,6 +58,8 @@ Follow these steps to set up the project on your local machine:
 2. Choose between creating an account or logging in.
 3. After logging in, choose options to search for songs, play favorites, or log out.
 
+Block Diagram:
+
 ![Block Diagram](https://github.com/aahalani/spotifyclonecpp/assets/29179250/0345bc4c-7f42-4de3-b71b-d951cccdc17f.png)
 
 
