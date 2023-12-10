@@ -58,8 +58,7 @@ Follow these steps to set up the project on your local machine:
 2. Choose between creating an account or logging in.
 3. After logging in, choose options to search for songs, play favorites, or log out.
 
-![Block Diagram](![SPOTIFY]([https://github.com/aahalani/spotifyclonecpp/assets/29179250/c901c2dd-b01b-4ecf-8b6f-11022964e240](https://github-production-user-asset-6210df.s3.amazonaws.com/29179250/289347367-c901c2dd-b01b-4ecf-8b6f-11022964e240.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20231210%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231210T085724Z&X-Amz-Expires=300&X-Amz-Signature=49c4f1adbb7d5ef01b34a5c89fc673e30f6550fb56bdd8cb2d93a2f1139c7a50&X-Amz-SignedHeaders=host&actor_id=29179250&key_id=0&repo_id=725963553)https://github-production-user-asset-6210df.s3.amazonaws.com/29179250/289347367-c901c2dd-b01b-4ecf-8b6f-11022964e240.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20231210%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231210T085724Z&X-Amz-Expires=300&X-Amz-Signature=49c4f1adbb7d5ef01b34a5c89fc673e30f6550fb56bdd8cb2d93a2f1139c7a50&X-Amz-SignedHeaders=host&actor_id=29179250&key_id=0&repo_id=725963553)
-).
+![Block Diagram](https://github.com/aahalani/spotifyclonecpp/assets/29179250/0345bc4c-7f42-4de3-b71b-d951cccdc17f.png)
 
 
 ## Credits
